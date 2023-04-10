@@ -1,0 +1,360 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Search</title>
+        <link href="{% static 'styles.css' %}" rel="stylesheet">
+        <script>
+            var search = true;
+            var data = JSON.parse("{{ data|escapejs }}");
+            
+            var templates = data["templates"];
+            var inputGrid = data["grid"];
+            var actions = data["actions"];
+            var actions2 = data["actions2"];
+
+            var speed = data["speed"];
+        
+            // 0 is off, 1 is draw, 2 is erase
+            var mouseOverOn = 0;
+
+
+            window.addEventListener('DOMContentLoaded', function() {
+                var container = document.getElementById("grid-container");
+                var hiddenForm = document.getElementById("hidden-form");
+
+                // create grids
+
+                if (!data["search"]) {
+                    for (var x = 0; x < 100; x++) {
+                        var num = document.createElement("h3");
+                        num.innerHTML = 100 - x;
+                        container.appendChild(num);
+
+                        for (var y = 0; y < 100; y++) {
+                            var grid = document.createElement("div");
+                            grid.setAttribute("class", "grid-item");
+                            grid.setAttribute("id", "grid-"+x+"-"+y);
+                            grid.addEventListener("mouseover", fill);
+                            grid.addEventListener("mousedown", fill);
+                            container.appendChild(grid);
+                        }
+
+                        var hiddenInput = document.createElement("input");
+                        hiddenInput.setAttribute("type", "hidden");
+                        hiddenInput.setAttribute("name", "row"+x);
+                        hiddenInput.setAttribute("id", "row"+x);
+                        hiddenInput.setAttribute("class", "hidden-input");
+                        hiddenInput.setAttribute("value","0".repeat(100));
+                        hiddenForm.appendChild(hiddenInput);
+                    }
+
+                    container.appendChild(document.createElement("h3"));
+
+                    for (var lowNum = 1; lowNum < 101; lowNum++) {
+                        var num = document.createElement("h3");
+                        num.innerHTML = lowNum;
+                        container.appendChild(num);
+                    }
+
+                    // add event listener for when 'd' is pressed
+                    document.addEventListener('keydown', (event) => {
+                        if (event.key == "d") {
+                            mouseOverOn = 1;
+                            document.getElementById("draw-info").innerHTML = "Draw On";
+                        } else if (event.key == "e") {
+                            mouseOverOn = 2;
+                            document.getElementById("draw-info").innerHTML = "Erase On";
+                        } else if (event.key == "s") {
+                            mouseOverOn = 0;
+                            document.getElementById("draw-info").innerHTML = "Draw and Erase Off"; 
+                        }
+                    }, false);
+
+                    // show different path costs on uniform cost
+                    document.getElementById("search-type").addEventListener('change', showOptions)
+
+                    templateOptions = document.getElementById("template")
+                    templateOptions.addEventListener('change', changeTemplate)
+
+                    for (var id of Object.keys(templates)) {
+                        var newTemplate = document.createElement("option");
+                        newTemplate.setAttribute("value", id);
+                        newTemplate.innerHTML = templates[id]["name"];
+                        templateOptions.appendChild(newTemplate);
+                    }
+
+                } else {
+                    for (var x = 0; x < 100; x++) {
+
+                        var num = document.createElement("h3");
+                        num.innerHTML = 100 - x;
+                        container.appendChild(num);
+
+                        for (var y = 0; y < 100; y++) {
+                            var grid = document.createElement("div");
+                            if (inputGrid[x][y] == 1) {
+
+                                grid.setAttribute("class", "grid-item filled-black");
+                            } else {
+                                grid.setAttribute("class", "grid-item");
+                            }
+                            grid.setAttribute("id", "grid-"+x+"-"+y);
+                            container.appendChild(grid);
+                        }
+
+                        var hiddenInput = document.createElement("input");
+                        hiddenInput.setAttribute("type", "hidden");
+                        hiddenInput.setAttribute("name", "row"+x);
+                        hiddenInput.setAttribute("id", "row"+x);
+                        hiddenInput.setAttribute("class", "hidden-input");
+                        hiddenInput.setAttribute("value",data["rows"][x]);
+                        hiddenForm.appendChild(hiddenInput);
+                    }
+
+                    container.appendChild(document.createElement("h3"));
+
+                    for (var lowNum = 1; lowNum < 101; lowNum++) {
+                        var num = document.createElement("h3");
+                        num.innerHTML = lowNum;
+                        container.appendChild(num);
+                    }
+
+                    document.getElementById("name").innerHTML = data["name"];
+                    document.getElementById("coords").innerHTML = "X: "+data["startX"]+", Y: "+data["startY"];
+                    document.getElementById("coords").innerHTML += " to X: "+data["endX"]+", Y: "+data["endY"];
+                    document.getElementById("speed").innerHTML = data["speed"]+"ms per move";
+
+                    document.getElementById("search-type").addEventListener('change', showOptions)
+
+                    document.getElementById("start-x").setAttribute("value", data["startX"]);
+                    document.getElementById("start-y").setAttribute("value", data["startY"]);
+                    document.getElementById("end-x").setAttribute("value", data["endX"]);
+                    document.getElementById("end-y").setAttribute("value", data["endY"]);
+                    document.getElementById("speed").setAttribute("value", data["speed"]);
+                    
+                    runSearch();
+                }
+            });
+
+            String.prototype.replaceAt = function(index, replacement) {
+                return this.substring(0, index) 
+                + replacement 
+                + this.substring(index + replacement.length);
+            }
+
+            function runSearch() {
+                var i = 0;
+                firstFinished = false
+
+                var interval = setInterval(() => {
+                    var elem = document.getElementById("grid-"+actions[i][0]+"-"+actions[i][1]);
+                    if (data['start'][0] == actions[i][0] && data['start'][1] == actions[i][1]) {
+                        elem.className = "grid-item filled-purple";
+                    } else if (data['goal'][0] == actions[i][0] && data['goal'][1] == actions[i][1]) {
+                        elem.className = "grid-item filled-orange";
+                    } else {
+                        elem.className = "grid-item filled-green";
+                    }
+                    i++;
+
+                    if (i == actions.length) {
+                        clearInterval(interval);
+                        firstFinished = true
+                        i = 0
+                    }
+                }, speed);
+
+
+                if (data["multiActions"]) {
+                    interval2 = setInterval(() => {
+                        if (firstFinished) {
+                            elem = document.getElementById("grid-"+actions2[i][0]+"-"+actions2[i][1]);
+                            if (data['start'][0] == actions[i][0] && data['start'][1] == actions[i][1]) {
+                                elem.className = "grid-item filled-purple";
+                            } else if (data['goal'][0] == actions2[i][0] && data['goal'][1] == actions2[i][1]) {
+                                elem.className = "grid-item filled-orange";
+                            } else {
+                                elem.className = "grid-item filled-yellow";
+                            }
+                            i++;
+
+                            if (i == actions2.length) {
+                                clearInterval(interval2);
+                            }
+                        }
+                    }, speed);
+                }
+            }
+
+
+            function fill() {
+                if (mouseOverOn == 0) {
+                    document.getElementById("grid-container").className = "grid-container pointer";
+                } else if (mouseOverOn == 1) {
+                    document.getElementById("grid-container").className = "grid-container crosshair";
+                    fillBlue(this)    
+                } else if (mouseOverOn == 2) {
+                    document.getElementById("grid-container").className = "grid-container eraser";
+                    removeBlue(this)
+                } 
+                this.addEventListener("click", fill);
+            }
+
+            function fillBlue(node) {
+                var row = node.id.split('-')[1];
+                var col = node.id.split('-')[2];
+                var nodeHidden = document.getElementById("row"+row);
+                nodeHidden.setAttribute("value", nodeHidden.value.replaceAt(+col,"1"));
+                node.className = "grid-item filled-blue";
+            }
+
+            function removeBlue(node) {
+                var row = node.id.split('-')[1];
+                var col = node.id.split('-')[2];
+                var nodeHidden = document.getElementById("row"+row);
+                nodeHidden.setAttribute("value",nodeHidden.value.replaceAt(+col,"0"));
+                node.className = "grid-item";
+            }
+
+            function showOptions() {
+                if (this.value == "uniform") {
+                    document.getElementById("path-cost").className = "";
+                } else {
+                    document.getElementById("path-cost").className = "hidden-input";
+                }
+                this.addEventListener("onchange", showOptions);
+            }
+
+            function changeTemplate() {
+                var template = templates[this.value];
+                console.log(template)
+
+                for (var y = 0; y < 100; y++) {
+                    for (var x = 0; x < 100; x++) {
+                        if (template["grid"][y][x] == 0) {
+                            removeBlue(document.getElementById("grid-"+y+"-"+x));
+                        } 
+                        if (template["grid"][y][x] == 1) {
+                            fillBlue(document.getElementById("grid-"+y+"-"+x));
+                        }
+                    }
+                }
+
+                document.getElementById("startY").setAttribute("value", template["start"][1]);
+                document.getElementById("startX").setAttribute("value", template["start"][0]);
+
+                document.getElementById("endY").setAttribute("value", template["end"][1]);
+                document.getElementById("endX").setAttribute("value", template["end"][0]);
+
+                document.getElementById("speed").setAttribute("value", template["speed"]);
+
+                this.addEventListener("onchange", changeTemplate);
+            }
+
+            function pythonArrayOfGrid() {
+                var grid = data["grid"];
+                var array = "[\n"
+                for (var x = 0; x < 100; x++) {
+                    var row = "["
+                    for (var y = 0; y < 100; y++) {
+                        if (y != 99) {
+                            row += grid[x][y] + ",";
+                        }
+                    }
+                    row += "]"
+                    if (x != 99) {
+                        row+= ",\n"
+                    }
+                    if (row.indexOf("1") == -1) {
+                        row = "emptyRow(), "
+                        if (x%5 == 0) {
+                            row += "\n";
+                        }
+                    }
+                    array += row;
+                }
+                array += "]"
+                console.log(array)
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Search</h1>
+
+        {% if get %}
+        <h2>Press "d" to draw, "e" to erase, and "s" to turn off both</h2>
+        <h2 id="draw-info">Draw Off</h3>
+        {% endif %}
+
+        <div class="grid-container" id="grid-container">
+        </div>
+        {% if not get %}
+        <h5 id="name"></h5>
+        <h5 id="coords"></h5>
+        <h5 id="speed"></h5>
+
+        {% if targetFound %}
+        <h5>Target found.</h5>
+        {% else %}
+        <h5>Target not found.</h5>
+        {% endif %}
+
+        <h4>Press Command + R to replay without reseting screen</h4>
+        {% endif %}
+
+        <form action="" method="post" id="hidden-form">
+            {% csrf_token %}
+
+            <select name="searchType" id="search-type">
+                <option value="breadth">Breadth First Search</option>
+                <option value="depth">Depth First Search</option>
+                <option value="greedy">Greedy Best First Search</option>
+                {% if targetFound or get %}
+                <option value="uniform">Uniform Cost Search</option>
+                <option value="a_star">A* Search</option>
+                {% endif %}
+                <option value="random">Random Search</option>
+            </select>
+            <br>
+            <br>
+            <div id="path-cost" class="hidden-input">
+                <label for="pathCostType">Path Cost Heuristic: </label>
+                <select name="pathCostType" id="path-cost-type">
+                    <option value="path_length">Shortest Path</option>
+                    <option value="path_consistency">Most consistent path (least changes to direction)</option>
+                    <option value="min_walls">Touches the walls the least</option>
+                </select>
+            </div>
+            <br>
+
+            {% if get %}
+            <label for="template">Template: </label>
+            <select name="template" id="template">
+            </select>
+            <br>
+            <br>
+            <input type="number" name="startY" id="startY" placeholder="Starting X Coordinate" required min="1" max="100">
+            <input type="number" name="startX" id="startX" placeholder="Starting Y Coordinate" required min="1" max="100">
+            <br>
+            <br>
+            <input type="number" name="endY" id="endY" placeholder="Goal X Coordinate" required min="1" max="100">
+            <input type="number" name="endX" id="endX" placeholder="Goal Y Coordinate" required min="1" max="100">
+            <br>
+            <br>
+            <input type="number" name="speed" id="speed" placeholder="Speed (milliseconds per node)" required>
+            <br>
+            <br>
+            <input type="submit" id="submit-button" value="Play!">
+            {% else %}
+            <input type="hidden" name="startY" id="start-y">
+            <input type="hidden" name="startX" id="start-x">
+            <input type="hidden" name="endY" id="end-y">
+            <input type="hidden" name="endX" id="end-x">
+            <input type="hidden" name="speed" id="speed">
+            <input type="submit" id="submit-button" value="Replay!">
+            {% endif %}
+        </form>
+    </body>
+</html>

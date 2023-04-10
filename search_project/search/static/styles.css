@@ -1,0 +1,85 @@
+h1, h2, h4, h5 {
+    text-align: center;
+}
+
+h2 {
+    font-size: 18px;
+}
+
+h3 {
+    font-size: 4px;
+}
+
+h5 {
+    font-size: 20px;
+}
+
+input[type="number"] {
+    width: 150px;
+}
+
+#hidden-form {
+    text-align: center;
+    display: block;
+}
+
+.hidden-input {
+    display: none;
+}
+
+.grid-container {
+    display: grid;
+    margin: 2% 15% 2% 15%;
+}
+
+.grid-container {
+    grid-template-columns: auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto auto auto auto auto auto auto auto 
+    auto auto auto auto auto auto auto;
+}
+
+.grid-item {
+    border: 0.5px solid black;
+    padding: 1px 1px 1px 1px;
+}
+
+.filled-blue {
+    background-color: blue;
+}
+
+.filled-black {
+    background-color: black;
+}
+
+.filled-green {
+    background-color: green;
+}
+
+.filled-purple {
+    background-color: purple;
+}
+
+.filled-orange {
+    background-color: orange;
+}
+
+.filled-yellow {
+    background-color: yellow;
+}
+
+.pointer {
+    cursor: default;	
+}
+
+.crosshair {
+    cursor: crosshair;
+}
+
+.eraser {
+    cursor: cell;	
+}
